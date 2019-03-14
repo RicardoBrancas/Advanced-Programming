@@ -42,28 +42,37 @@ public class Shell {
 						System.out.println("Class not found.");
 					}
 					break;
+
+
 				case "Set":
 					memory.put(args[0], top);
 					System.out.println("Saved name for object of type: class " + top.getClass());
 					showTop();
 					assert parts.length == 2;
 					break;
+
+
 				case "Get":
 					assert parts.length == 2;
 					top = memory.get(args[0]);
 					showTop();
 					break;
+
+
 				case "Index":
 					assert parts.length == 2;
 					assert top.getClass().isArray();
 
 					top = Array.get(top, Integer.parseInt(args[0]));
 					showTop();
-
 					break;
+
+
 				case "Exit":
 					System.out.println("Goodbye!");
 					return;
+
+
 				default:
 					System.out.println("Trying generic command: " + command);
 					Class[] types = new Class[args.length / 2];
@@ -83,7 +92,7 @@ public class Shell {
 						System.out.println("Method not found.");
 						break;
 					} catch (IllegalAccessException e) {
-						e.printStackTrace();
+						System.out.println("Illegal access: " + e.getCause());
 					} catch (InvocationTargetException e) {
 						e.printStackTrace();
 					}
