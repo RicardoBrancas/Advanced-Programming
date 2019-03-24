@@ -4,8 +4,6 @@ import javassist.*;
 import javassist.expr.ExprEditor;
 import javassist.expr.FieldAccess;
 
-import java.util.Objects;
-
 public class FunctionalProfilerTranslator implements Translator {
 	@Override
 	public void start(ClassPool pool) throws NotFoundException, CannotCompileException {
@@ -13,7 +11,7 @@ public class FunctionalProfilerTranslator implements Translator {
 
 	@Override
 	public void onLoad(ClassPool pool, String classname) throws NotFoundException, CannotCompileException {
-		if (classname.equals("ist.meic.pa.FunctionalProfiler.FunctionalProfilerCounter"))
+		if (classname.equals("ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime"))
 			return;
 
 		CtClass ctClass = pool.getCtClass(classname);
@@ -24,7 +22,7 @@ public class FunctionalProfilerTranslator implements Translator {
 		for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
 			int m = ctMethod.getModifiers();
 			if (Modifier.isPublic(m) && Modifier.isStatic(m) && ctMethod.getName().equals("main")) {
-				ctMethod.insertAfter("{ ist.meic.pa.FunctionalProfiler.FunctionalProfilerCounter.print(); }");
+				ctMethod.insertAfter("{ ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.print(); }");
 			}
 
 			ctMethod.instrument(new ExprEditor() {
@@ -37,14 +35,19 @@ public class FunctionalProfilerTranslator implements Translator {
 		}
 
 		for (CtConstructor ctConstructor : ctClass.getConstructors()) {
+			ctConstructor.insertBeforeBody("{" +
+					"ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.currentConstructor = $0;" +
+					"}");
+
+			ctConstructor.insertAfter("{" +
+					"ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.currentConstructor = null;" +
+					"}");
+
 			ctConstructor.instrument(new ExprEditor() {
 				@Override
 				public void edit(FieldAccess f) throws CannotCompileException {
 					addReadCounter(f, ctClass);
-
-					if (f.getClassName() != null) {
-						addWriteCounter(f, ctClass);
-					}
+					addConstructorWriteCounter(f, ctClass);
 				}
 			});
 		}
@@ -56,7 +59,7 @@ public class FunctionalProfilerTranslator implements Translator {
 			if (f.isReader()) {
 				f.replace("{" +
 						"$_ = $proceed();" +
-						"ist.meic.pa.FunctionalProfiler.FunctionalProfilerCounter.addRead(\"" + f.getClassName() + "\");" +
+						"ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.addRead($0.getClass());" +
 						"}");
 			}
 		}
@@ -67,7 +70,19 @@ public class FunctionalProfilerTranslator implements Translator {
 			if (f.isWriter()) {
 				f.replace("{" +
 						"$proceed($$);" +
-						"ist.meic.pa.FunctionalProfiler.FunctionalProfilerCounter.addWrite(\"" + f.getClassName() + "\");" +
+						"ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.addWrite($0.getClass());" +
+						"}");
+			}
+		}
+	}
+
+	private void addConstructorWriteCounter(FieldAccess f, CtClass ctClass) throws CannotCompileException {
+		if (!f.isStatic()) {
+			if (f.isWriter()) {
+				f.replace("{" +
+						"$proceed($$);" +
+						"if ($0 != ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.currentConstructor)" +
+						"	ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.addWrite($0.getClass());" +
 						"}");
 			}
 		}

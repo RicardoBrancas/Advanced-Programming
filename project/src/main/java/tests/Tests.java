@@ -21,6 +21,8 @@ public class Tests {
 		}
 	}
 
+	public static  Object a;
+
 	static void test1() {
 		new Person();
 	}
