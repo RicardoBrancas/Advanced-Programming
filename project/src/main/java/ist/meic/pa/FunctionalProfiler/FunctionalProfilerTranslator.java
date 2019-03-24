@@ -28,8 +28,8 @@ public class FunctionalProfilerTranslator implements Translator {
 			ctMethod.instrument(new ExprEditor() {
 				@Override
 				public void edit(FieldAccess f) throws CannotCompileException {
-					addReadCounter(f, ctClass);
-					addWriteCounter(f, ctClass);
+					addReadCounter(f);
+					addWriteCounter(f);
 				}
 			});
 		}
@@ -46,15 +46,15 @@ public class FunctionalProfilerTranslator implements Translator {
 			ctConstructor.instrument(new ExprEditor() {
 				@Override
 				public void edit(FieldAccess f) throws CannotCompileException {
-					addReadCounter(f, ctClass);
-					addConstructorWriteCounter(f, ctClass);
+					addReadCounter(f);
+					addConstructorWriteCounter(f);
 				}
 			});
 		}
 
 	}
 
-	private void addReadCounter(FieldAccess f, CtClass ctClass) throws CannotCompileException {
+	private void addReadCounter(FieldAccess f) throws CannotCompileException {
 		if (!f.isStatic()) {
 			if (f.isReader()) {
 				f.replace("{" +
@@ -65,7 +65,7 @@ public class FunctionalProfilerTranslator implements Translator {
 		}
 	}
 
-	private void addWriteCounter(FieldAccess f, CtClass ctClass) throws CannotCompileException {
+	private void addWriteCounter(FieldAccess f) throws CannotCompileException {
 		if (!f.isStatic()) {
 			if (f.isWriter()) {
 				f.replace("{" +
@@ -76,7 +76,7 @@ public class FunctionalProfilerTranslator implements Translator {
 		}
 	}
 
-	private void addConstructorWriteCounter(FieldAccess f, CtClass ctClass) throws CannotCompileException {
+	private void addConstructorWriteCounter(FieldAccess f) throws CannotCompileException {
 		if (!f.isStatic()) {
 			if (f.isWriter()) {
 				f.replace("{" +
