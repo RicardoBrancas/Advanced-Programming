@@ -1,9 +1,6 @@
 package ist.meic.pa.FunctionalProfiler;
 
-import javassist.CannotCompileException;
-import javassist.ClassPool;
-import javassist.Loader;
-import javassist.NotFoundException;
+import javassist.*;
 
 import java.util.Arrays;
 
@@ -11,7 +8,7 @@ public class WithFunctionalProfiler {
 
 	public static void main(String[] args) {
 		if (args.length < 1) {
-			System.out.println("Usage: [CLASS] [ARG]...");
+			System.out.println("Usage: WithFunctionalProfiler [CLASS] [ARG]...");
 			System.exit(-1);
 		}
 
