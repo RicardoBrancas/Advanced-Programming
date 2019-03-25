@@ -1,11 +1,14 @@
 package tests.sampleA;
 
+import ist.meic.pa.FunctionalProfilerExtended.FunctionalRecord;
+
 interface Counter {
     public int value();
     public Counter advance();
 }
 
 class ImperativeCounter implements Counter {
+	@FunctionalRecord
     int i;
 
     ImperativeCounter(int start) {
@@ -21,6 +24,7 @@ class ImperativeCounter implements Counter {
 }
 
 class FunctionalCounter implements Counter {
+	@FunctionalRecord
     int i;
 
     public FunctionalCounter(int start) {

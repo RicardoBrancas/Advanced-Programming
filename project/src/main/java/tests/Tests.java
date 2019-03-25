@@ -1,4 +1,6 @@
 package tests;
+import ist.meic.pa.FunctionalProfilerExtended.FunctionalRecord;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 import java.io.*;
@@ -128,9 +130,12 @@ public class Tests {
 
 // Test Classes
 class Person {
+	@FunctionalRecord
 	String firstname;
+	@FunctionalRecord
 	String surname;
 
+	@FunctionalRecord
 	int age;
 
 	Person() {}
@@ -177,7 +182,9 @@ class Professor extends Person {
 }
 
 class Student extends Person {
+	@FunctionalRecord
 	int mark;
+	@FunctionalRecord
 	Professor[] favoriteProfessors;
 	Student() {
 		this.favoriteProfessors = new Professor[5];
@@ -206,17 +213,22 @@ class Student extends Person {
 }
 
 class StudentPAva extends Student {
+	@FunctionalRecord
 	boolean pass = false;
 }
 
 
 // Test Classes
 class Car{
+	@FunctionalRecord
 	int maxSpeed;
+	@FunctionalRecord
 	float fuelCapacity;
 
 	static class Motor {
+		@FunctionalRecord
 		boolean on;
+		@FunctionalRecord
 		int maxSpeed;
 		
 		Motor(Car c) {
@@ -250,6 +262,7 @@ class Car{
 }
 
 class MyFakeFileWriter implements AutoCloseable {
+	@FunctionalRecord
 	String in;
 
 	MyFakeFileWriter(String filename) { 

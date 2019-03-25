@@ -11,7 +11,8 @@ public class FunctionalProfilerTranslator implements Translator {
 
 	@Override
 	public void onLoad(ClassPool pool, String classname) throws NotFoundException, CannotCompileException {
-		if (classname.equals("ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime"))
+		if (classname.equals("ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime") ||
+				classname.equals("ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime$IntPair"))
 			return;
 
 		CtClass ctClass = pool.getCtClass(classname);
