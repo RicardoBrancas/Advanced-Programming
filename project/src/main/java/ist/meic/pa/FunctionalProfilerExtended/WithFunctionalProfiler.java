@@ -18,7 +18,7 @@ public class WithFunctionalProfiler {
 		ClassPool pool = ClassPool.getDefault();
 		Loader classLoader = new Loader(pool);
 		try {
-			classLoader.addTranslator(pool, new FunctionalProfilerTranslator());
+			classLoader.addTranslator(pool, new FunctionalProfilerTranslator(args[0]));
 		} catch (NotFoundException | CannotCompileException e) {
 			e.printStackTrace();
 		}

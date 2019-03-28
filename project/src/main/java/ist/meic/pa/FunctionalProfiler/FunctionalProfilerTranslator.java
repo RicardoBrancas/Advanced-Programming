@@ -5,6 +5,13 @@ import javassist.expr.ExprEditor;
 import javassist.expr.FieldAccess;
 
 public class FunctionalProfilerTranslator implements Translator {
+
+	private String mainClass;
+
+	FunctionalProfilerTranslator(String mainClass) {
+		this.mainClass = mainClass;
+	}
+
 	@Override
 	public void start(ClassPool pool) throws NotFoundException, CannotCompileException {
 	}
@@ -22,7 +29,10 @@ public class FunctionalProfilerTranslator implements Translator {
 	private void instrument(CtClass ctClass) throws CannotCompileException {
 		for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
 			int m = ctMethod.getModifiers();
-			if (Modifier.isPublic(m) && Modifier.isStatic(m) && ctMethod.getName().equals("main")) {
+			if (ctClass.getName().equals(mainClass)
+					&& Modifier.isPublic(m)
+					&& Modifier.isStatic(m)
+					&& ctMethod.getName().equals("main")) {
 				ctMethod.insertAfter("{ ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.print(); }");
 			}
 
