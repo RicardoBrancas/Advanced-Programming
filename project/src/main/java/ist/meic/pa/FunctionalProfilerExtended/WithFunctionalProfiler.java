@@ -5,6 +5,8 @@ import javassist.ClassPool;
 import javassist.Loader;
 import javassist.NotFoundException;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 
 public class WithFunctionalProfiler {
@@ -18,17 +20,31 @@ public class WithFunctionalProfiler {
 		ClassPool pool = ClassPool.getDefault();
 		Loader classLoader = new Loader(pool);
 		try {
-			classLoader.addTranslator(pool, new FunctionalProfilerTranslator(args[0]));
+			classLoader.addTranslator(pool, new FunctionalProfilerTranslator());
 		} catch (NotFoundException | CannotCompileException e) {
 			e.printStackTrace();
 		}
 
-		String[] restArgs = Arrays.copyOfRange(args, 1, args.length);
+		try {
+			Class c = classLoader.loadClass("ist.meic.pa.FunctionalProfilerExtended.FunctionalProfilerRuntime");
+			Method print = c.getDeclaredMethod("print");
+			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+				try {
+					print.invoke(null);
+				} catch (IllegalAccessException | InvocationTargetException e) {
+					System.err.println("Error while printing statistics.");
+				}
+			}));
+		} catch (ClassNotFoundException | NoSuchMethodException e) {
+			System.err.println("Could not find runtime class!");
+			System.exit(1);
+		}
 
+		String[] restArgs = Arrays.copyOfRange(args, 1, args.length);
 		try {
 			classLoader.run(args[0], restArgs);
 		} catch (Throwable throwable) {
-			System.err.println("Class threw " + throwable.getMessage());
+			System.err.println("Class threw " + throwable.getClass().getName());
 			throwable.printStackTrace();
 		}
 

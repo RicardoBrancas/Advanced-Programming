@@ -6,12 +6,6 @@ import javassist.expr.FieldAccess;
 
 public class FunctionalProfilerTranslator implements Translator {
 
-	private String mainClass;
-
-	FunctionalProfilerTranslator(String mainClass) {
-		this.mainClass = mainClass;
-	}
-
 	@Override
 	public void start(ClassPool pool) throws NotFoundException, CannotCompileException {
 	}
@@ -28,14 +22,6 @@ public class FunctionalProfilerTranslator implements Translator {
 
 	private void instrument(CtClass ctClass) throws CannotCompileException {
 		for (CtMethod ctMethod : ctClass.getDeclaredMethods()) {
-			int m = ctMethod.getModifiers();
-			if (ctClass.getName().equals(mainClass)
-					&& Modifier.isPublic(m)
-					&& Modifier.isStatic(m)
-					&& ctMethod.getName().equals("main")) {
-				ctMethod.insertAfter("{ ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.print(); }");
-			}
-
 			ctMethod.instrument(new ExprEditor() {
 				@Override
 				public void edit(FieldAccess f) throws CannotCompileException {
@@ -92,8 +78,8 @@ public class FunctionalProfilerTranslator implements Translator {
 			if (f.isWriter()) {
 				f.replace("{" +
 						"$proceed($$);" +
-						"if ($0 != ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.currentConstructor)" +
-						"	ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.addWrite($0.getClass());" +
+						"if ($0 != ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.currentConstructor) {" +
+						"	ist.meic.pa.FunctionalProfiler.FunctionalProfilerRuntime.addWrite($0.getClass()); }" +
 						"}");
 			}
 		}
