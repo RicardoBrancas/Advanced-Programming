@@ -45,8 +45,9 @@ public class Example {
         test(c1, c1.advance());
         Counter c2 = new ImperativeCounter(0);
         test(c2, c2.advance());
+		System.exit(-1);
     }
     public static void test(Counter c1, Counter c2) {
-        String.format("%s %s", c1.value(), c2.value());
+        String.format("%s %s\n", c1.value(), c2.value());
     }
 }
