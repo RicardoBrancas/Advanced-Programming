@@ -2,7 +2,6 @@ struct class
     name
     superclasses
     slots
-    container
 end
 
 struct object
@@ -10,12 +9,12 @@ struct object
     slots
 end
 
-function make_class(symb, superclasses, slots)
-    container_type = Symbol("__internal_T_", symb)
-    eval(quote mutable struct $container_type
-            $(Expr(:block, slots...))
-        end end)
-    class(symb, superclasses, slots, container_type)
+function make_class(symb::Symbol, superclasses, slots)
+    class(symb, superclasses, slots)
+end
+
+macro defclass(symb, superclasses, slots...)
+    :(make_class($symb, $superclasses, $slots))
 end
 
 function make_instance(class::class, mappings...)
@@ -41,7 +40,7 @@ end
 
 function get_slot(instance::object, name::Symbol)
     if slot_exists(instance.class, name)
-        if name in instance.slots
+        if haskey(instance.slots, name)
             return instance.slots[name]
         else
             error("ERROR: Slot ", name, " is unbound")
@@ -60,10 +59,15 @@ function set_slot!(instance::object, name::Symbol, value)
 end
 
 
-C1 = make_class(:C1, [], [:a])
+:(C1 = make_class(:C1, [], [:a]))
 C2 = make_class(:C2, [], [:b, :c])
 C3 = make_class(:C3, [C1, C2], [:d])
 
-c3i1 = make_instance(C3, :a=>1, :b=>2, :c=>3, :d=>4)
+@defclass(C4, [], a)
 
-c3i1.slots
+c3i1 = make_instance(C3, :a=>1, :b=>2, :c=>3, :d=>4)
+c3i2 = make_instance(C3, :b=>2)
+
+get_slot(c3i2, :b)
+set_slot!(c3i2, :b, 3)
+println([get_slot(c3i1, s) for s in [:a, :b, :c]])
