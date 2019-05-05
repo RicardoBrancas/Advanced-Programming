@@ -63,6 +63,14 @@ function get_slot(instance::object, name::Symbol)
     end
 end
 
+function Base.getproperty(instance::object, name::Symbol)
+    if name === :slots || name === :class
+        return getfield(instance, name)
+    else
+        return get_slot(instance, name)
+    end
+end
+
 function set_slot!(instance::object, name::Symbol, value)
     if slot_exists(instance.class, name)
         instance.slots[name] = value
