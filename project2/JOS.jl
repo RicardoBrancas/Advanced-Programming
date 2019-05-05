@@ -135,10 +135,6 @@ macro defmethod(expr)
     end
 end
 
-function Base.getproperty(instance::object, name::Symbol)
-    return get_slot(instance, name)
-end
-
 C1 = make_class(:C1, [], [:a])
 C2 = make_class(:C2, [], [:b, :c])
 C3 = make_class(:C3, [C1, C2], [:d])
