@@ -104,7 +104,6 @@ function funcall(name, args::object...)
     if haskey(generics, name)
         m = best_method(name, map(x -> x.class, args)...)
         return m.func(args...)
-        return ()
     else
         error("Unkown generic function: ", name)
     end
@@ -128,7 +127,7 @@ macro defmethod(expr)
         name = expr.args[1].args[1]
         args = map(x -> x.args[1], expr.args[1].args[2:end])
         types = map(x -> classes[x.args[2]], expr.args[1].args[2:end]) # TODO check argument names/number
-        lambda = eval(:($(args...) -> $(expr.args[2])))
+        lambda = @eval ($(args...),) -> $(expr.args[2])
         pushfirst!(generics[name].methods, method(name, types, lambda))
     else
         error("Syntax error: expression expected.")
@@ -165,3 +164,6 @@ c3i1 = make_instance(C3, :a=>1, :b=>2)
 c3i2 = make_instance(C3, :b=>3, :a=>5)
 
 bar(c1i1, c2i1)
+bar(c2i1, c1i1)
+bar(c1i1, c3i1)
+bar(c3i1, c3i2)
