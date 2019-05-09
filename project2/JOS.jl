@@ -1,44 +1,41 @@
-struct class
+struct Class
     name::Symbol
-    superclasses::Vector{class}
+    superclasses::Vector{Class}
     slots::Vector{Symbol}
 end
 
-struct object
-    _class::class
+struct Object
+    _class::Class
     _slots::Dict{Symbol, Any}
 end
 
-struct method
-    name::Symbol
-    types::Vector{class}
+struct Method
+    types::Vector{Class}
     func::Function
 end
 
-struct generic
-    name::Symbol
+struct GenericFunction
     arguments::Vector{Symbol}
-    methods::Vector{method}
+    methods::Vector{Method}
 end
 
-generics = Dict{Symbol, generic}()
-classes = Dict{Symbol, class}()
+classes = Dict{Symbol, Class}()
 
-function make_class(symb::Symbol, superclasses, slots)
-    c = class(symb, superclasses, slots)
+function make_class(symb::Symbol, superclasses::Vector, slots::Vector)
+    c = Class(symb, superclasses, slots)
     classes[symb] = c
     return c
 end
 
-function make_instance(class::class, mappings...)
-    inst = object(class, Dict())
+function make_instance(class::Class, mappings...)
+    inst = Object(class, Dict())
     for m in mappings
         set_slot!(inst, m[1], m[2])
     end
     return inst
 end
 
-function slot_exists(class::class, name::Symbol)
+function slot_exists(class::Class, name::Symbol)
     if name in class.slots
         return true
     else
@@ -51,7 +48,7 @@ function slot_exists(class::class, name::Symbol)
     return false
 end
 
-function get_slot(instance::object, name::Symbol)
+function get_slot(instance::Object, name::Symbol)
     if slot_exists(instance._class, name)
         if haskey(instance._slots, name)
             return instance._slots[name]
@@ -63,7 +60,7 @@ function get_slot(instance::object, name::Symbol)
     end
 end
 
-function Base.getproperty(instance::object, name::Symbol)
+function Base.getproperty(instance::Object, name::Symbol)
     if name === :_slots || name === :_class
         return getfield(instance, name)
     else
@@ -71,7 +68,7 @@ function Base.getproperty(instance::object, name::Symbol)
     end
 end
 
-function set_slot!(instance::object, name::Symbol, value)
+function set_slot!(instance::Object, name::Symbol, value)
     if slot_exists(instance._class, name)
         instance._slots[name] = value
     else
@@ -79,73 +76,69 @@ function set_slot!(instance::object, name::Symbol, value)
     end
 end
 
-function move_up(name::Symbol, args::class...)
-    args = [args...]
-    for i in 1 : size(args)[1]
-        temp = args[i]
-        for super in args[i].superclasses
-            args[i] = super
-            m = best_method(name, args...)
-            if m != false
-                return m
+function class_precedence_list(c::Class)
+    discovered = []
+    S = [c]
+    while S != []
+        v = pop!(S)
+        if !(v in discovered)
+            push!(discovered, v)
+            for super in reverse(v.superclasses)
+                push!(S, super)
             end
         end
-        args[i] = temp
     end
-    return false
+    return discovered
 end
 
-function best_method(name::Symbol, args::class...)
-    #println("Trying ", name, " with ", args)
-    for method in generics[name].methods
-        found = true
-        for (method_t, actual_t) in zip(method.types, args)
-            if method_t != actual_t
-                found = false
-                break
-            end
-        end
-        if found
-            return method
+function is_compatible(formal, actual)
+    for (form1, act1) in zip(formal, actual)
+        if !(form1 in class_precedence_list(act1))
+            return false
         end
     end
-    return move_up(name, args...)
+    return true
 end
 
-function funcall(name::Symbol, args::object...)
-    if haskey(generics, name)
-        m = best_method(name, map(x -> x._class, args)...)
-        if isa(m, method)
-            return m.func(args...)
-        else
-            error("ERROR: No applicable method")
-        end
-    else
-        error("Unkown generic function: ", name)
+function sort_methods(g::GenericFunction, classes::Class...)
+    compatible = filter(method -> is_compatible(method.types, classes), g.methods)
+
+    sort(compatible, by=method ->
+        map(pair -> tuple(findall(x -> x == pair[2], class_precedence_list(pair[1]))...)
+           ,zip(classes, method.types)))
+end
+
+function best_method(g::GenericFunction, args::Class...)
+    methods = sort_methods(g, args...)
+    if methods == []
+        error("ERROR: No applicable method")
     end
+    return sort_methods(g, args...)[1]
 end
 
 macro defgeneric(expr)
     if isa(expr, Expr) && expr.head == :call
-        name = expr.args[1]
+        name = esc(expr.args[1])
         args = expr.args[2:end]
-        gen = generic(name, args, Vector())
-        generics[name] = gen
 
-        return :($(name)($(args...)) = funcall(Symbol($name), $(args...)))
+        return :($(name) = GenericFunction($args, Vector()))
     else
         error("Syntax error: expression expected.")
     end
 end
 
+function (f::GenericFunction)(args...)
+    return best_method(f, map(x -> x._class, args)...).func(args...)
+end
+
 macro defmethod(expr)
     if isa(expr, Expr) #&& expr.head == :=
-        name = expr.args[1].args[1]
+        name = esc(expr.args[1].args[1])
         args = map(x -> x.args[1], expr.args[1].args[2:end])
         types = map(x -> classes[x.args[2]], expr.args[1].args[2:end]) # TODO check argument names/number
         lambda = :(($(args...),) -> $(expr.args[2]))
         return quote
-            pushfirst!(generics[Symbol($name)].methods, method(Symbol($name), $types, $lambda))
+            pushfirst!($name.methods, Method($types, $lambda))
         end
     else
         error("Syntax error: expression expected.")
@@ -185,3 +178,12 @@ bar(c1i1, c2i1)
 bar(c2i1, c1i1)
 bar(c1i1, c3i1)
 bar(c3i1, c3i2)
+
+a = make_class(:a, [], [])
+b = make_class(:b, [], [])
+c = make_class(:c, [], [])
+d = make_class(:d, [a, b], [])
+e = make_class(:e, [a, c], [])
+f = make_class(:f, [d, e], [])
+
+class_precedence_list(f)
