@@ -5,8 +5,8 @@ struct class
 end
 
 struct object
-    class::class
-    slots::Dict{Symbol, Any}
+    _class::class
+    _slots::Dict{Symbol, Any}
 end
 
 struct method
@@ -35,14 +35,14 @@ function make_instance(class::class, mappings...)
     for m in mappings
         set_slot!(inst, m[1], m[2])
     end
-    inst
+    return inst
 end
 
 function slot_exists(class::class, name::Symbol)
     if name in class.slots
         return true
     else
-        for super in class.superclasses
+        for super in class.superclasses #DFS
             if slot_exists(super, name)
                 return true
             end
@@ -52,9 +52,9 @@ function slot_exists(class::class, name::Symbol)
 end
 
 function get_slot(instance::object, name::Symbol)
-    if slot_exists(instance.class, name)
-        if haskey(instance.slots, name)
-            return instance.slots[name]
+    if slot_exists(instance._class, name)
+        if haskey(instance._slots, name)
+            return instance._slots[name]
         else
             error("ERROR: Slot ", name, " is unbound")
         end
@@ -64,7 +64,7 @@ function get_slot(instance::object, name::Symbol)
 end
 
 function Base.getproperty(instance::object, name::Symbol)
-    if name === :slots || name === :class
+    if name === :_slots || name === :_class
         return getfield(instance, name)
     else
         return get_slot(instance, name)
@@ -72,14 +72,31 @@ function Base.getproperty(instance::object, name::Symbol)
 end
 
 function set_slot!(instance::object, name::Symbol, value)
-    if slot_exists(instance.class, name)
-        instance.slots[name] = value
+    if slot_exists(instance._class, name)
+        instance._slots[name] = value
     else
         error("ERROR: Slot ", name, " is missing")
     end
 end
 
-function best_method(name, args::class...)
+function move_up(name::Symbol, args::class...)
+    args = [args...]
+    for i in 1 : size(args)[1]
+        temp = args[i]
+        for super in args[i].superclasses
+            args[i] = super
+            m = best_method(name, args...)
+            if m != false
+                return m
+            end
+        end
+        args[i] = temp
+    end
+    return false
+end
+
+function best_method(name::Symbol, args::class...)
+    #println("Trying ", name, " with ", args)
     for method in generics[name].methods
         found = true
         for (method_t, actual_t) in zip(method.types, args)
@@ -92,18 +109,17 @@ function best_method(name, args::class...)
             return method
         end
     end
-    next = move_up(args...)
-    if next
-        return best_method(name, next...)
-    else
-        error("No suitable method found.")
-    end
+    return move_up(name, args...)
 end
 
-function funcall(name, args::object...)
+function funcall(name::Symbol, args::object...)
     if haskey(generics, name)
-        m = best_method(name, map(x -> x.class, args)...)
-        return m.func(args...)
+        m = best_method(name, map(x -> x._class, args)...)
+        if isa(m, method)
+            return m.func(args...)
+        else
+            error("ERROR: No applicable method")
+        end
     else
         error("Unkown generic function: ", name)
     end
@@ -127,8 +143,10 @@ macro defmethod(expr)
         name = expr.args[1].args[1]
         args = map(x -> x.args[1], expr.args[1].args[2:end])
         types = map(x -> classes[x.args[2]], expr.args[1].args[2:end]) # TODO check argument names/number
-        lambda = @eval ($(args...),) -> $(expr.args[2])
-        pushfirst!(generics[name].methods, method(name, types, lambda))
+        lambda = :(($(args...),) -> $(expr.args[2]))
+        return quote
+            pushfirst!(generics[Symbol($name)].methods, method(Symbol($name), $types, $lambda))
+        end
     else
         error("Syntax error: expression expected.")
     end
