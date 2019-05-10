@@ -27,6 +27,15 @@ function make_class(symb::Symbol, superclasses::Vector, slots::Vector)
     return c
 end
 
+macro defclass(symb, superclasses, slots...)
+    dump(superclasses)
+    symb2 = esc(symb)
+    super = map(x -> classes[x], superclasses.args)
+    return quote
+        $symb2 = make_class(Symbol($("$symb")), $super, [$slots...])
+    end
+end
+
 function make_instance(class::Class, mappings...)
     inst = Object(class, Dict())
     for m in mappings
@@ -145,9 +154,11 @@ macro defmethod(expr)
     end
 end
 
-C1 = make_class(:C1, [], [:a])
-C2 = make_class(:C2, [], [:b, :c])
-C3 = make_class(:C3, [C1, C2], [:d])
+instanceof(x::Any, c::Class) = isa(x, Object) && c in class_precedence_list(x._class)
+
+@defclass(C1, [], a)
+@defclass(C2, [], b, c)
+@defclass(C3, [C1, C2], d)
 
 c3i1 = make_instance(C3, :a=>1, :b=>2, :c=>3, :d=>4)
 c3i2 = make_instance(C3, :b=>2)
@@ -178,12 +189,3 @@ bar(c1i1, c2i1)
 bar(c2i1, c1i1)
 bar(c1i1, c3i1)
 bar(c3i1, c3i2)
-
-a = make_class(:a, [], [])
-b = make_class(:b, [], [])
-c = make_class(:c, [], [])
-d = make_class(:d, [a, b], [])
-e = make_class(:e, [a, c], [])
-f = make_class(:f, [d, e], [])
-
-class_precedence_list(f)
