@@ -21,6 +21,14 @@ end
 
 classes = Dict{Symbol, Class}()
 
+function get_class(symb::Symbol)
+    if haskey(classes, symb)
+        return classes[symb]
+    else
+        error("ERROR: Unknown class ", x)
+    end
+end
+
 function make_class(symb::Symbol, superclasses::Vector, slots::Vector)
     c = Class(symb, superclasses, slots)
     classes[symb] = c
@@ -30,7 +38,7 @@ end
 macro defclass(symb, superclasses, slots...)
     dump(superclasses)
     symb2 = esc(symb)
-    super = map(x -> classes[x], superclasses.args)
+    super = map(x -> get_class(x), superclasses.args)
     return quote
         $symb2 = make_class(Symbol($("$symb")), $super, [$slots...])
     end
@@ -144,10 +152,14 @@ macro defmethod(expr)
     if isa(expr, Expr) #&& expr.head == :=
         name = esc(expr.args[1].args[1])
         args = map(x -> x.args[1], expr.args[1].args[2:end])
-        types = map(x -> classes[x.args[2]], expr.args[1].args[2:end]) # TODO check argument names/number
         lambda = :(($(args...),) -> $(expr.args[2]))
         return quote
-            pushfirst!($name.methods, Method($types, $lambda))
+            if $args != $name.arguments
+                error("ERROR: method parameters do not match function definition.")
+            else
+                types = $(map(x -> get_class(x.args[2]), expr.args[1].args[2:end]))
+                pushfirst!($name.methods, Method(types, $lambda))
+            end
         end
     else
         error("Syntax error: expression expected.")
