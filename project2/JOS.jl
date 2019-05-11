@@ -93,7 +93,7 @@ function set_slot!(instance::Object, name::Symbol, value)
     end
 end
 
-function class_precedence_list(c::Class)
+function class_precedence_list(c::Class) #DFS, romving duplicates found later. ie Flavors
     discovered = []
     S = [c]
     while S != []
@@ -130,7 +130,7 @@ function best_method(g::GenericFunction, args::Class...)
     if methods == []
         error("ERROR: No applicable method")
     end
-    return sort_methods(g, args...)[1]
+    return methods[1]
 end
 
 macro defgeneric(expr)
