@@ -15,18 +15,16 @@ struct Method
 end
 
 struct GenericFunction
-    arguments::Vector{Symbol}
+    parameters::Vector{Symbol}
     methods::Vector{Method}
 end
+
+# ==================== CLASSES ====================
 
 classes = Dict{Symbol, Class}()
 
 function get_class(symb::Symbol)
-    if haskey(classes, symb)
-        return classes[symb]
-    else
-        error("ERROR: Unknown class ", x)
-    end
+    haskey(classes, symb) ? classes[symb] : error("ERROR: Unknown class ", symb)
 end
 
 function make_class(symb::Symbol, superclasses::Vector, slots::Vector)
@@ -44,7 +42,24 @@ macro defclass(symb, superclasses, slots...)
     end
 end
 
-function make_instance(class::Class, mappings...)
+function class_precedence_list(c::Class) #DFS, removing duplicates found later. ie Flavors
+    discovered = []
+    S = [c]
+    while S != []
+        v = pop!(S)
+        if !(v in discovered)
+            push!(discovered, v)
+            for super in reverse(v.superclasses)
+                push!(S, super)
+            end
+        end
+    end
+    return discovered
+end
+
+# ==================== OBJECTS ====================
+
+function make_instance(class::Class, mappings::Pair...)
     inst = Object(class, Dict())
     for m in mappings
         set_slot!(inst, m[1], m[2])
@@ -93,52 +108,17 @@ function set_slot!(instance::Object, name::Symbol, value)
     end
 end
 
-function class_precedence_list(c::Class) #DFS, romving duplicates found later. ie Flavors
-    discovered = []
-    S = [c]
-    while S != []
-        v = pop!(S)
-        if !(v in discovered)
-            push!(discovered, v)
-            for super in reverse(v.superclasses)
-                push!(S, super)
-            end
-        end
-    end
-    return discovered
-end
+instanceof(x::Any, c::Class) = false
+instanceof(x::Object, c::Class) = c in class_precedence_list(x._class)
 
-function is_compatible(formal, actual)
-    for (form1, act1) in zip(formal, actual)
-        if !(form1 in class_precedence_list(act1))
-            return false
-        end
-    end
-    return true
-end
-
-function sort_methods(g::GenericFunction, classes::Class...)
-    compatible = filter(method -> is_compatible(method.types, classes), g.methods)
-
-    sort(compatible, by=method ->
-        map(pair -> tuple(findall(x -> x == pair[2], class_precedence_list(pair[1]))...)
-           ,zip(classes, method.types)))
-end
-
-function best_method(g::GenericFunction, args::Class...)
-    methods = sort_methods(g, args...)
-    if methods == []
-        error("ERROR: No applicable method")
-    end
-    return methods[1]
-end
+# ==================== FUNCTIONS ====================
 
 macro defgeneric(expr)
     if isa(expr, Expr) && expr.head == :call
         name = esc(expr.args[1])
-        args = expr.args[2:end]
+        params = expr.args[2:end]
 
-        return :($(name) = GenericFunction($args, Vector()))
+        return :($(name) = GenericFunction($params, Vector()))
     else
         error("Syntax error: expression expected.")
     end
@@ -148,13 +128,15 @@ function (f::GenericFunction)(args...)
     return best_method(f, map(x -> x._class, args)...).func(args...)
 end
 
+# ==================== METHODS ====================
+
 macro defmethod(expr)
     if isa(expr, Expr) #&& expr.head == :=
         name = esc(expr.args[1].args[1])
         args = map(x -> x.args[1], expr.args[1].args[2:end])
         lambda = :(($(args...),) -> $(expr.args[2]))
         return quote
-            if $args != $name.arguments
+            if $args != $name.parameters
                 error("ERROR: method parameters do not match function definition.")
             else
                 types = $(map(x -> get_class(x.args[2]), expr.args[1].args[2:end]))
@@ -166,7 +148,32 @@ macro defmethod(expr)
     end
 end
 
-instanceof(x::Any, c::Class) = isa(x, Object) && c in class_precedence_list(x._class)
+function best_method(g::GenericFunction, args::Class...)
+    methods = sort_methods(g, args...)
+    if methods == []
+        error("ERROR: No applicable method")
+    end
+    return methods[1]
+end
+
+function sort_methods(g::GenericFunction, classes::Class...)
+    compatible = filter(method -> is_compatible(method.types, classes), g.methods)
+
+    sort(compatible, by=method ->
+        map(pair -> tuple(findall(x -> x == pair[2], class_precedence_list(pair[1]))...)
+           ,zip(classes, method.types)))
+end
+
+function is_compatible(formal, actual)
+    for (form1, act1) in zip(formal, actual)
+        if !(form1 in class_precedence_list(act1))
+            return false
+        end
+    end
+    return true
+end
+
+# ==================== END ====================
 
 @defclass(C1, [], a)
 @defclass(C2, [], b, c)
