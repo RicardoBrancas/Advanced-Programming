@@ -24,7 +24,7 @@ end
 classes = Dict{Symbol, Class}()
 
 function get_class(symb::Symbol)
-    haskey(classes, symb) ? classes[symb] : error("ERROR: Unknown class ", symb)
+    haskey(classes, symb) ? classes[symb] : error("Unknown class ", symb)
 end
 
 function make_class(symb::Symbol, superclasses::Vector, slots::Vector)
@@ -85,10 +85,10 @@ function get_slot(instance::Object, name::Symbol)
         if haskey(instance._slots, name)
             return instance._slots[name]
         else
-            error("ERROR: Slot ", name, " is unbound")
+            error("Slot ", name, " is unbound")
         end
     else
-        error("ERROR: Slot ", name, " is missing")
+        error("Slot ", name, " is missing")
     end
 end
 
@@ -104,7 +104,7 @@ function set_slot!(instance::Object, name::Symbol, value)
     if slot_exists(instance._class, name)
         instance._slots[name] = value
     else
-        error("ERROR: Slot ", name, " is missing")
+        error("Slot ", name, " is missing")
     end
 end
 
@@ -137,7 +137,7 @@ macro defmethod(expr)
         lambda = :(($(args...),) -> $(expr.args[2]))
         return quote
             if $args != $name.parameters
-                error("ERROR: method parameters do not match function definition.")
+                error("Method parameters do not match function definition.")
             else
                 types = $(map(x -> get_class(x.args[2]), expr.args[1].args[2:end]))
                 pushfirst!($name.methods, Method(types, $lambda))
@@ -151,7 +151,7 @@ end
 function best_method(g::GenericFunction, args::Class...)
     methods = sort_methods(g, args...)
     if methods == []
-        error("ERROR: No applicable method")
+        error("No applicable method")
     end
     return methods[1]
 end
@@ -172,39 +172,3 @@ function is_compatible(formal, actual)
     end
     return true
 end
-
-# ==================== END ====================
-
-@defclass(C1, [], a)
-@defclass(C2, [], b, c)
-@defclass(C3, [C1, C2], d)
-
-c3i1 = make_instance(C3, :a=>1, :b=>2, :c=>3, :d=>4)
-c3i2 = make_instance(C3, :b=>2)
-
-get_slot(c3i2, :b)
-set_slot!(c3i2, :b, 3)
-[get_slot(c3i1, s) for s in [:a, :b, :c]]
-
-@defgeneric foo(c)
-@defmethod foo(c::C1) = 1
-@defmethod foo(c::C2) = c.b
-
-foo(make_instance(C1))
-foo(make_instance(C2, :b=>42))
-
-# Multiple Dispatch Test
-@defgeneric bar(x, y)
-@defmethod bar(x::C1, y::C2) = x.a + y.b
-@defmethod bar(x::C1, y::C3) = x.a - y.b
-@defmethod bar(x::C3, y::C3) = x.a * y.b
-
-c1i1 = make_instance(C1, :a=>1)
-c2i1 = make_instance(C2, :b=>3)
-c3i1 = make_instance(C3, :a=>1, :b=>2)
-c3i2 = make_instance(C3, :b=>3, :a=>5)
-
-bar(c1i1, c2i1)
-bar(c2i1, c1i1)
-bar(c1i1, c3i1)
-bar(c3i1, c3i2)
