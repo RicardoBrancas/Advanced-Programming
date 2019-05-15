@@ -179,13 +179,3 @@ function is_compatible(formal, actual)
     end
     return true
 end
-
-Person = make_class(:Person, [], [:name, :age]);
-Researcher = make_class(:Researcher, [], [:group]);
-@defclass(Student, [Person], course);
-@defclass(Sportsman, [], activity, schedule);
-
-@defclass(IstStudent, [Student, Sportsman]);
-@defclass(PhdStudent, [IstStudent, Researcher]);
-
-# ------------------------------------------------------------------------------
