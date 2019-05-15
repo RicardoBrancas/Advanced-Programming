@@ -100,11 +100,21 @@ function Base.getproperty(instance::Object, name::Symbol)
     end
 end
 
+
 function set_slot!(instance::Object, name::Symbol, value)
     if slot_exists(instance._class, name)
         instance._slots[name] = value
     else
         error("ERROR: Slot ", name, " is missing")
+    end
+end
+
+
+function Base.setproperty!(instance::Object, name::Symbol, value)
+    if name === :_slots || name === :_class
+        error("ERROR: Can't assign slots or class name")
+    else
+        return set_slot!(instance, name, value)
     end
 end
 

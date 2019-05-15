@@ -107,6 +107,13 @@ function set_slot!(instance::Object, name::Symbol, value)
         error("Slot ", name, " is missing")
     end
 end
+function Base.setproperty!(instance::Object, name::Symbol, value)
+    if name === :_slots || name === :_class
+        error("ERROR: Can't assign slots or class name")
+    else
+        return set_slot!(instance, name, value)
+    end
+end
 
 instanceof(x::Any, c::Class) = false
 instanceof(x::Object, c::Class) = c in class_precedence_list(x._class)
@@ -172,3 +179,13 @@ function is_compatible(formal, actual)
     end
     return true
 end
+
+Person = make_class(:Person, [], [:name, :age]);
+Researcher = make_class(:Researcher, [], [:group]);
+@defclass(Student, [Person], course);
+@defclass(Sportsman, [], activity, schedule);
+
+@defclass(IstStudent, [Student, Sportsman]);
+@defclass(PhdStudent, [IstStudent, Researcher]);
+
+# ------------------------------------------------------------------------------
