@@ -120,10 +120,9 @@ instanceof(x::Object, c::Class) = c in class_precedence_list(x._class)
 # ==================== FUNCTIONS ====================
 
 macro defgeneric(expr)
-    if isa(expr, Expr) && expr.head == :call
+    if expr.head == :call
         name = esc(expr.args[1])
         params = expr.args[2:end]
-
         return :($(name) = GenericFunction($params, Vector()))
     else
         error("Syntax error: expression expected.")
@@ -137,20 +136,16 @@ end
 # ==================== METHODS ====================
 
 macro defmethod(expr)
-    if isa(expr, Expr) #&& expr.head == :=
-        name = esc(expr.args[1].args[1])
-        args = map(x -> x.args[1], expr.args[1].args[2:end])
-        lambda = :(($(args...),) -> $(expr.args[2]))
-        return quote
-            if $args != $name.parameters
-                error("Method parameters do not match function definition.")
-            else
-                types = $(map(x -> get_class(x.args[2]), expr.args[1].args[2:end]))
-                pushfirst!($name.methods, Method(types, $lambda))
-            end
+    name = esc(expr.args[1].args[1])
+    args = map(x -> x.args[1], expr.args[1].args[2:end])
+    lambda = :(($(args...),) -> $(expr.args[2]))
+    return quote
+        if $args != $name.parameters
+            error("Method parameters do not match function definition.")
+        else
+            types = $(map(x -> get_class(x.args[2]), expr.args[1].args[2:end]))
+            pushfirst!($name.methods, Method(types, $lambda))
         end
-    else
-        error("Syntax error: expression expected.")
     end
 end
 

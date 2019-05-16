@@ -1,3 +1,9 @@
+struct Class
+    name::Symbol
+    superclasses::Vector{Class}
+    slots::Vector{Symbol}
+end
+
 mutable struct Object
     _class::Union{Missing, Object}
     _slots::Dict{Symbol, Any}
