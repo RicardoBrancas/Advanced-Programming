@@ -1,9 +1,3 @@
-struct Class
-    name::Symbol
-    superclasses::Vector{Class}
-    slots::Vector{Symbol}
-end
-
 mutable struct Object
     _class::Union{Missing, Object}
     _slots::Dict{Symbol, Any}
@@ -41,8 +35,6 @@ macro defclass(meta, symb, superclasses, slots...)
         $symb2 = make_class($meta, Symbol($("$symb")), $super, [$slots...])
     end
 end
-
-
 
 # ==================== OBJECTS ====================
 
@@ -197,7 +189,7 @@ standard_class._class = standard_class
 classes[:class] = class
 classes[:standard_class] = standard_class
 
-@defclass(standard_class, loops_class, [class])
+@defclass(standard_class, loops_class, [class]) # loops_class is an instance of standard_class for simplicity
 
 @defgeneric class_precedence_list(c)
 
