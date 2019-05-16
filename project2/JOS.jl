@@ -34,7 +34,6 @@ function make_class(symb::Symbol, superclasses::Vector, slots::Vector)
 end
 
 macro defclass(symb, superclasses, slots...)
-    dump(superclasses)
     symb2 = esc(symb)
     super = map(x -> get_class(x), superclasses.args)
     return quote
